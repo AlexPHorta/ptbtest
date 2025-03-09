@@ -91,19 +91,18 @@ class InlineQueryGenerator(PtbGenerator):
                 pass
             elif isinstance(location, bool):
                 import random
-                location = Location(
-                    random.uniform(-180, 180), random.uniform(-90, 90))
+                location = Location(random.uniform(-180, 180),
+                                    random.uniform(-90, 90))
             else:
                 raise AttributeError(
                     "Location must be either telegram.Location or True")
 
-        return InlineQuery(
-            self._gen_id(),
-            from_user=user,
-            query=query,
-            offset=offset,
-            location=location,
-            bot=self.bot)
+        return InlineQuery(self._gen_id(),
+                           from_user=user,
+                           query=query,
+                           offset=offset,
+                           location=location,
+                           bot=self.bot)
 
     @update("chosen_inline_result")
     def get_chosen_inline_result(self,
@@ -144,8 +143,8 @@ class InlineQueryGenerator(PtbGenerator):
                 pass
             elif isinstance(location, bool):
                 import random
-                location = Location(
-                    random.uniform(-180, 180), random.uniform(-90, 90))
+                location = Location(random.uniform(-180, 180),
+                                    random.uniform(-90, 90))
             else:
                 raise AttributeError(
                     "Location must be either telegram.Location or True")
@@ -153,12 +152,11 @@ class InlineQueryGenerator(PtbGenerator):
         if not inline_message_id:
             inline_message_id = self._gen_id()
 
-        return ChosenInlineResult(
-            result_id=result_id,
-            from_user=user,
-            query=query,
-            location=location,
-            inline_message_id=inline_message_id)
+        return ChosenInlineResult(result_id=result_id,
+                                  from_user=user,
+                                  query=query,
+                                  location=location,
+                                  inline_message_id=inline_message_id)
 
     def _gen_id(self):
         return str(uuid.uuid4())

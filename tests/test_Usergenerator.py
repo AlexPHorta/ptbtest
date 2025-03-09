@@ -25,6 +25,7 @@ from ptbtest import UserGenerator
 
 
 class TestUserGenerator(unittest.TestCase):
+
     def setUp(self):
         self.ug = UserGenerator()
 

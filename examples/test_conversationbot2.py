@@ -114,7 +114,7 @@ class TestConversationbot2(unittest.TestCase):
         # We are going to test a conversationhandler. Since this is tied in with user and chat we need to
         # create both for consistancy
         user = self.ug.get_user()
-        chat = self.cg.get_chat(type="group")
+        chat = self.cg.get_chat(chat_type="group")
         user2 = self.ug.get_user()
         chat2 = self.cg.get_chat(user=user)
 

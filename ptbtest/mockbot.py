@@ -22,11 +22,13 @@
 
 import functools
 import logging
-import warnings
 
 import time
 
-from telegram import (User, ReplyMarkup, TelegramObject)
+from telegram import (User, TelegramObject)
+from telegram.utils.request import Request
+from telegram.ext import Defaults
+from telegram.replymarkup import ReplyMarkup
 from telegram.error import TelegramError
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -59,6 +61,9 @@ class Mockbot(TelegramObject):
     Parameters:
         username (Optional[str]): Username for this bot. Defaults to 'MockBot'"""
 
+    __slots__ = ("_updates", "bot", "_username", "_sendmessages", "mg", "cg",
+                 "request", "defaults", "_counter")
+
     def __init__(self, username="MockBot", **kwargs):
         self._updates = []
         self.bot = None
@@ -68,6 +73,9 @@ class Mockbot(TelegramObject):
         from .chatgenerator import ChatGenerator
         self.mg = MessageGenerator(bot=self)
         self.cg = ChatGenerator()
+        self.request = Request()
+        self.defaults = Defaults()
+        self._counter = 0
 
     @property
     def sent_messages(self):
@@ -75,6 +83,7 @@ class Mockbot(TelegramObject):
 
     @property
     def updates(self):
+        self._counter = self._counter + 1
         tmp = self._updates
         self._updates = []
         return tmp
@@ -86,6 +95,7 @@ class Mockbot(TelegramObject):
         self._sendmessages = []
 
     def info(func):
+
         @functools.wraps(func)
         def decorator(self, *args, **kwargs):
             if not self.bot:
@@ -121,6 +131,7 @@ class Mockbot(TelegramObject):
         return '@{0}'.format(self.username)
 
     def message(func):
+
         @functools.wraps(func)
         def decorator(self, *args, **kwargs):
             data = func(self, *args, **kwargs)
@@ -162,7 +173,7 @@ class Mockbot(TelegramObject):
             cid = dat.pop('from_chat_id', None)
             if cid:
                 dat['forward_from_chat'] = self.cg.get_chat(
-                    cid=cid, type='channel')
+                    cid=cid, chat_type='channel')
             dat.pop('inline_message_id', None)
             dat.pop('performer', '')
             dat.pop('title', '')
@@ -190,7 +201,11 @@ class Mockbot(TelegramObject):
         return decorator
 
     def getMe(self, timeout=None, **kwargs):
-        self.bot = User(0, "Mockbot", last_name="Bot", username=self._username)
+        self.bot = User(0,
+                        "Mockbot",
+                        is_bot=True,
+                        last_name="Bot",
+                        username=self._username)
         return self.bot
 
     @message
@@ -263,7 +278,7 @@ class Mockbot(TelegramObject):
                   timeout=None,
                   **kwargs):
         data = {'chat_id': chat_id, 'audio': audio}
-        data['audio2'] = {'file_id': audio}
+        data['audio2'] = {'file_id': audio, 'file_unique_id': audio}
         if duration:
             data['duration'] = duration
             data['audio2']['duration'] = duration
@@ -294,7 +309,8 @@ class Mockbot(TelegramObject):
             'chat_id': chat_id,
             'document': document,
             'document2': {
-                'file_id': document
+                'file_id': document,
+                'file_unique_id': document
             }
         }
         if filename:
@@ -309,6 +325,8 @@ class Mockbot(TelegramObject):
     def sendSticker(self,
                     chat_id,
                     sticker,
+                    is_animated,
+                    is_video,
                     disable_notification=False,
                     reply_to_message_id=None,
                     reply_markup=None,
@@ -318,7 +336,10 @@ class Mockbot(TelegramObject):
             'chat_id': chat_id,
             'sticker': sticker,
             'sticker2': {
-                'file_id': sticker
+                'file_id': sticker,
+                'file_unique_id': sticker,
+                'is_animated': is_animated,
+                'is_video': is_video
             }
         }
 
@@ -339,7 +360,8 @@ class Mockbot(TelegramObject):
             'chat_id': chat_id,
             'video': video,
             'video2': {
-                'file_id': video
+                'file_id': video,
+                'file_unique_id': video
             }
         }
 
@@ -366,7 +388,8 @@ class Mockbot(TelegramObject):
             'chat_id': chat_id,
             'voice': voice,
             'voice2': {
-                'file_id': voice
+                'file_id': voice,
+                'file_unique_id': voice
             }
         }
 
@@ -595,8 +618,8 @@ class Mockbot(TelegramObject):
                            reply_markup=None,
                            timeout=None,
                            **kwargs):
-        if inline_message_id is None and (chat_id is None or
-                                          message_id is None):
+        if inline_message_id is None and (chat_id is None
+                                          or message_id is None):
             raise TelegramError(
                 'editMessageCaption: Both chat_id and message_id are required when '
                 'inline_message_id is not specified')
@@ -622,8 +645,8 @@ class Mockbot(TelegramObject):
                                reply_markup=None,
                                timeout=None,
                                **kwargs):
-        if inline_message_id is None and (chat_id is None or
-                                          message_id is None):
+        if inline_message_id is None and (chat_id is None
+                                          or message_id is None):
             raise TelegramError(
                 'editMessageCaption: Both chat_id and message_id are required when '
                 'inline_message_id is not specified')
@@ -667,6 +690,9 @@ class Mockbot(TelegramObject):
                    **kwargs):
         return None
 
+    def delete_webhook(self, timeout=None, **kwargs):
+        return None
+
     def leaveChat(self, chat_id, timeout=None, **kwargs):
         data = {'chat_id': chat_id}
 
@@ -708,7 +734,6 @@ class Mockbot(TelegramObject):
                      chat_id=None,
                      message_id=None,
                      inline_message_id=None,
-                     edit_message=None,
                      force=None,
                      disable_edit_message=None,
                      timeout=None,
@@ -725,14 +750,6 @@ class Mockbot(TelegramObject):
             data['force'] = force
         if disable_edit_message is not None:
             data['disable_edit_message'] = disable_edit_message
-        if edit_message is not None:
-            warnings.warn(
-                'edit_message is deprecated, use disable_edit_message instead')
-            if disable_edit_message is None:
-                data['edit_message'] = edit_message
-            else:
-                warnings.warn(
-                    'edit_message is ignored when disable_edit_message is used')
 
         data['method'] = "setGameScore"
         self._sendmessages.append(data)
@@ -761,7 +778,7 @@ class Mockbot(TelegramObject):
     def de_json(data, bot):
         data = super(Mockbot, Mockbot).de_json(data, bot)
 
-        return Mockbot(**data)
+        return Mockbot(**data.__dict__)
 
     def to_dict(self):
         data = {

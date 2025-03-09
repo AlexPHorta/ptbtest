@@ -19,20 +19,17 @@
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 from __future__ import absolute_import
+
 import unittest
 
-from ptbtest.errors import (BadBotException, BadUserException)
-from ptbtest import InlineQueryGenerator
-from ptbtest import Mockbot
-from ptbtest import UserGenerator
-from telegram import ChosenInlineResult
-from telegram import InlineQuery
-from telegram import Location
-from telegram import Update
-from telegram import User
+from telegram import ChosenInlineResult, InlineQuery, Location, Update, User
+
+from ptbtest import InlineQueryGenerator, Mockbot, UserGenerator
+from ptbtest.errors import BadBotException, BadUserException
 
 
 class TestInlineQueryGenerator(unittest.TestCase):
+
     def setUp(self):
         self.iqg = InlineQueryGenerator()
 
@@ -62,14 +59,14 @@ class TestInlineQueryGenerator(unittest.TestCase):
         u = self.iqg.get_inline_query(query="test")
         self.assertEqual(u.inline_query.query, "test")
 
-        with self.assertRaisesRegexp(AttributeError, "query"):
+        with self.assertRaisesRegex(AttributeError, "query"):
             self.iqg.get_inline_query(query=True)
 
     def test_offset(self):
         u = self.iqg.get_inline_query(offset="44")
         self.assertEqual(u.inline_query.offset, "44")
 
-        with self.assertRaisesRegexp(AttributeError, "offset"):
+        with self.assertRaisesRegex(AttributeError, "offset"):
             self.iqg.get_inline_query(offset=True)
 
     def test_location(self):
@@ -80,11 +77,12 @@ class TestInlineQueryGenerator(unittest.TestCase):
         u = self.iqg.get_inline_query(location=loc)
         self.assertEqual(u.inline_query.location.longitude, 23.0)
 
-        with self.assertRaisesRegexp(AttributeError, "telegram\.Location"):
+        with self.assertRaisesRegex(AttributeError, "telegram\.Location"):
             self.iqg.get_inline_query(location="location")
 
 
 class TestChosenInlineResult(unittest.TestCase):
+
     def setUp(self):
         self.iqc = InlineQueryGenerator()
 
@@ -95,7 +93,7 @@ class TestChosenInlineResult(unittest.TestCase):
         self.assertIsInstance(u.chosen_inline_result.from_user, User)
         self.assertEqual(u.chosen_inline_result.result_id, "testid")
 
-        with self.assertRaisesRegexp(AttributeError, "chosen_inline_result"):
+        with self.assertRaisesRegex(AttributeError, "chosen_inline_result"):
             self.iqc.get_chosen_inline_result()
 
     def test_with_location(self):
@@ -105,15 +103,15 @@ class TestChosenInlineResult(unittest.TestCase):
         u = self.iqc.get_chosen_inline_result("testid", location=loc)
         self.assertEqual(u.chosen_inline_result.location.longitude, 23.0)
 
-        with self.assertRaisesRegexp(AttributeError, "telegram\.Location"):
+        with self.assertRaisesRegex(AttributeError, "telegram\.Location"):
             self.iqc.get_chosen_inline_result("test_id", location="loc")
 
     def test_inline_message_id(self):
         u = self.iqc.get_chosen_inline_result("test")
         self.assertIsInstance(u.chosen_inline_result.inline_message_id, str)
 
-        u = self.iqc.get_chosen_inline_result(
-            "test", inline_message_id="myidilike")
+        u = self.iqc.get_chosen_inline_result("test",
+                                              inline_message_id="myidilike")
         self.assertEqual(u.chosen_inline_result.inline_message_id, "myidilike")
 
     def test_user(self):

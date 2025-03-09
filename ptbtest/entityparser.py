@@ -91,8 +91,8 @@ class EntityParser():
         inv = invalids.search(message)
         if inv:
             raise BadMarkupException(
-                "nested {} is not supported. your text: {}".format(
-                    ptype, inv.groups()[0]))
+                f"nested {ptype} is not supported. your text: {inv.groups()[0]}"
+            )
         while tags.search(message):
             tag = tags.search(message)
             text = tag.groups()[2]
@@ -120,20 +120,18 @@ class EntityParser():
             message = text_links.sub(r'\g<text>', message, count=1)
         for mention in mentions.finditer(message):
             entities.append(
-                MessageEntity('mention',
-                              mention.start(), mention.end() - mention.start(
-                              )))
+                MessageEntity('mention', mention.start(),
+                              mention.end() - mention.start()))
         for hashtag in hashtags.finditer(message):
             entities.append(
-                MessageEntity('hashtag',
-                              hashtag.start(), hashtag.end() - hashtag.start(
-                              )))
+                MessageEntity('hashtag', hashtag.start(),
+                              hashtag.end() - hashtag.start()))
         for botcommand in botcommands.finditer(message):
             entities.append(
-                MessageEntity('bot_command',
-                              botcommand.start(),
+                MessageEntity('bot_command', botcommand.start(),
                               botcommand.end() - botcommand.start()))
         for url in urls.finditer(message):
             entities.append(
-                MessageEntity('url', url.start(), url.end() - url.start()))
+                MessageEntity('url', url.start(),
+                              url.end() - url.start()))
         return message, entities

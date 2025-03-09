@@ -40,26 +40,25 @@ def update(messtype):
     """
 
     def _update(func):
+
         @functools.wraps(func)
         def decorated_func(self, *args, **kwargs):
-            tmp = dict(
-                message=None,
-                edited_message=None,
-                inline_query=None,
-                chosen_inline_result=None,
-                callback_query=None,
-                channel_post=None,
-                edited_channel_post=None)
+            tmp = dict(message=None,
+                       edited_message=None,
+                       inline_query=None,
+                       chosen_inline_result=None,
+                       callback_query=None,
+                       channel_post=None,
+                       edited_channel_post=None)
             tmp[messtype] = func(self, *args, **kwargs)
-            return Update(
-                next(idgen),
-                message=tmp['message'],
-                edited_message=tmp['edited_message'],
-                inline_query=tmp['inline_query'],
-                chosen_inline_result=tmp['chosen_inline_result'],
-                callback_query=tmp['callback_query'],
-                channel_post=tmp['channel_post'],
-                edited_channel_post=tmp['edited_channel_post'])
+            return Update(next(idgen),
+                          message=tmp['message'],
+                          edited_message=tmp['edited_message'],
+                          inline_query=tmp['inline_query'],
+                          chosen_inline_result=tmp['chosen_inline_result'],
+                          callback_query=tmp['callback_query'],
+                          channel_post=tmp['channel_post'],
+                          edited_channel_post=tmp['edited_channel_post'])
 
         return decorated_func
 

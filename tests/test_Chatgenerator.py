@@ -25,6 +25,7 @@ from ptbtest import UserGenerator
 
 
 class TestChatGenerator(unittest.TestCase):
+
     def setUp(self):
         self.cg = ChatGenerator()
 
@@ -37,7 +38,7 @@ class TestChatGenerator(unittest.TestCase):
         self.assertEqual(c.type, "private")
 
     def test_group_chat(self):
-        c = self.cg.get_chat(type="group")
+        c = self.cg.get_chat(chat_type="group")
 
         self.assertTrue(c.id < 0)
         self.assertEqual(c.type, "group")
@@ -45,12 +46,13 @@ class TestChatGenerator(unittest.TestCase):
         self.assertIsInstance(c.title, str)
 
     def test_group_all_members_are_administrators(self):
-        c = self.cg.get_chat(type="group", all_members_are_administrators=True)
+        c = self.cg.get_chat(chat_type="group",
+                             all_members_are_administrators=True)
         self.assertEqual(c.type, "group")
         self.assertTrue(c.all_members_are_administrators)
 
     def test_group_chat_with_group_name(self):
-        c = self.cg.get_chat(type="group", title="My Group")
+        c = self.cg.get_chat(chat_type="group", title="My Group")
 
         self.assertEqual(c.title, "My Group")
 
@@ -64,7 +66,7 @@ class TestChatGenerator(unittest.TestCase):
         self.assertEqual(c.type, "private")
 
     def test_supergroup(self):
-        c = self.cg.get_chat(type="supergroup")
+        c = self.cg.get_chat(chat_type="supergroup")
 
         self.assertTrue(c.id < 0)
         self.assertEqual(c.type, "supergroup")
@@ -72,43 +74,45 @@ class TestChatGenerator(unittest.TestCase):
         self.assertTrue(c.username, "".join(c.title.split()))
 
     def test_supergroup_with_title(self):
-        c = self.cg.get_chat(type="supergroup", title="Awesome Group")
+        c = self.cg.get_chat(chat_type="supergroup", title="Awesome Group")
 
         self.assertEqual(c.title, "Awesome Group")
         self.assertEqual(c.username, "AwesomeGroup")
 
     def test_supergroup_with_username(self):
-        c = self.cg.get_chat(type="supergroup", username="mygroup")
+        c = self.cg.get_chat(chat_type="supergroup", username="mygroup")
 
         self.assertEqual(c.username, "mygroup")
 
     def test_supergroup_with_username_title(self):
-        c = self.cg.get_chat(
-            type="supergroup", username="mygroup", title="Awesome Group")
+        c = self.cg.get_chat(chat_type="supergroup",
+                             username="mygroup",
+                             title="Awesome Group")
 
         self.assertEqual(c.title, "Awesome Group")
         self.assertEqual(c.username, "mygroup")
 
     def test_channel(self):
-        c = self.cg.get_chat(type="channel")
+        c = self.cg.get_chat(chat_type="channel")
 
         self.assertIsInstance(c.title, str)
         self.assertEqual(c.type, "channel")
         self.assertTrue(c.username, "".join(c.title.split()))
 
     def test_channel_with_title(self):
-        c = self.cg.get_chat(type="channel", title="Awesome Group")
+        c = self.cg.get_chat(chat_type="channel", title="Awesome Group")
         self.assertEqual(c.title, "Awesome Group")
         self.assertEqual(c.username, "AwesomeGroup")
 
-    def test_supergroup_with_username(self):
-        c = self.cg.get_chat(type="channel", username="mygroup")
+    def test_channel_with_username(self):
+        c = self.cg.get_chat(chat_type="channel", username="mygroup")
 
         self.assertEqual(c.username, "mygroup")
 
-    def test_supergroup_with_username_title(self):
-        c = self.cg.get_chat(
-            type="channel", username="mygroup", title="Awesome Group")
+    def test_channel_with_username_title(self):
+        c = self.cg.get_chat(chat_type="channel",
+                             username="mygroup",
+                             title="Awesome Group")
 
         self.assertEqual(c.title, "Awesome Group")
         self.assertEqual(c.username, "mygroup")

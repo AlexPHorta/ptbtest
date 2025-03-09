@@ -1,4 +1,4 @@
 coverage
-nose
-python-telegram-bot
+nose2
+python-telegram-bot=13.12
 pre-commit-hooks

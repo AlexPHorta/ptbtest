@@ -22,35 +22,41 @@
 
 
 class BadUserException(Exception):
+
     def __init__(self, error=None):
-        super(BadUserException, self).__init__(error or
-                                               'Invalid telegram.User object')
+        super(BadUserException,
+              self).__init__(error or 'Invalid telegram.User object')
 
 
 class BadChatException(Exception):
+
     def __init__(self, error=None):
-        super(BadChatException, self).__init__(error or
-                                               'Invalid telegram.Chat object')
+        super(BadChatException,
+              self).__init__(error or 'Invalid telegram.Chat object')
 
 
 class BadMessageException(Exception):
+
     def __init__(self, error=None):
-        super(BadMessageException, self).__init__(
-            error or 'Invalid telegram.Message object')
+        super(BadMessageException,
+              self).__init__(error or 'Invalid telegram.Message object')
 
 
 class BadBotException(Exception):
+
     def __init__(self, error=None):
-        super(BadBotException, self).__init__(error or
-                                              'Invalid ptbtest.Mockbot object')
+        super(BadBotException,
+              self).__init__(error or 'Invalid ptbtest.Mockbot object')
 
 
 class BadCallbackQueryException(Exception):
+
     def __init__(self, error=None):
-        super(BadCallbackQueryException, self).__init__(
-            error or 'Invalid telegram.CallbackQuery object')
+        super(BadCallbackQueryException,
+              self).__init__(error or 'Invalid telegram.CallbackQuery object')
 
 
 class BadMarkupException(Exception):
+
     def __init__(self, error=None):
         super(BadMarkupException, self).__init__(error or 'Bad markup error')

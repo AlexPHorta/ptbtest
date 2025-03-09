@@ -81,8 +81,8 @@ class MessageGenerator(PtbGenerator):
             user = channel_post.from_user
             chat = channel_post.chat
 
-        return self.get_channel_post(
-            id=id, user=user, chat=chat, **kwargs).channel_post
+        return self.get_channel_post(id=id, user=user, chat=chat,
+                                     **kwargs).channel_post
 
     @update("channel_post")
     def get_channel_post(self, chat=None, user=None, **kwargs):
@@ -102,10 +102,10 @@ class MessageGenerator(PtbGenerator):
                 raise BadChatException(
                     "Can only use chat.type='channel' for get_channel_post")
         else:
-            chat = ChatGenerator().get_chat(type="channel")
+            chat = ChatGenerator().get_chat(chat_type="channel")
 
-        return self.get_message(
-            chat=chat, user=user, channel=True, **kwargs).message
+        return self.get_message(chat=chat, user=user, channel=True,
+                                **kwargs).message
 
     @update("edited_message")
     def get_edited_message(self, message=None, **kwargs):
@@ -150,7 +150,7 @@ class MessageGenerator(PtbGenerator):
                     contact=None,
                     location=None,
                     venue=None,
-                    new_chat_member=None,
+                    new_chat_members=None,
                     left_chat_member=None,
                     new_chat_title=None,
                     new_chat_photo=None,
@@ -185,7 +185,7 @@ class MessageGenerator(PtbGenerator):
             forward_from_chat (Optional[telegram.Chat]): channel this message is forwarded from
             forward_date (Optional[int]): Original sent date
             forward_from_message_id (Optional[int]): message id from forwarded channel post.
-            new_chat_member (Optional[telegram.User]): New member for this chat
+            new_chat_members (Optional[lst(telegram.User)]): List of new members for this chat
             left_chat_member (Optional[telegram.User]): Member left this chat
             new_chat_title (Optional[str]): New title for the chat
             new_chat_photo (Optional[lst(telegram.Photosize)] or True): New picture for the group
@@ -225,53 +225,51 @@ class MessageGenerator(PtbGenerator):
         new_chat_photo = self._handle_status(
             channel_chat_created, chat, delete_chat_photo, group_chat_created,
             left_chat_member, migrate_from_chat_id, migrate_to_chat_id,
-            new_chat_member, new_chat_photo, new_chat_title, pinned_message,
+            new_chat_members, new_chat_photo, new_chat_title, pinned_message,
             supergroup_chat_created)
 
         audio, contact, document, location, photo, sticker, venue, video, voice = self._handle_attachments(
             audio, contact, document, location, photo, sticker, user, venue,
             video, voice, caption)
 
-        return Message(
-            id or next(self.idgen),
-            user,
-            None,
-            chat,
-            text=text,
-            forward_from=forward_from,
-            forward_from_chat=forward_from_chat,
-            reply_to_message=reply_to_message,
-            entities=entities,
-            audio=audio,
-            document=document,
-            photo=photo,
-            sticker=sticker,
-            video=video,
-            voice=voice,
-            caption=caption,
-            contact=contact,
-            location=location,
-            venue=venue,
-            new_chat_member=new_chat_member,
-            left_chat_member=left_chat_member,
-            new_chat_title=new_chat_title,
-            new_chat_photo=new_chat_photo,
-            delete_chat_photo=delete_chat_photo,
-            group_chat_created=group_chat_created,
-            supergroup_chat_created=supergroup_chat_created,
-            migrate_to_chat_id=migrate_to_chat_id,
-            migrate_from_chat_id=migrate_from_chat_id,
-            channel_chat_created=channel_chat_created,
-            pinned_message=pinned_message,
-            forward_from_message_id=forward_from_message_id,
-            forward_date=forward_date,
-            bot=bot or self.bot)
+        return Message(message_id=id or next(self.idgen),
+                       date=None,
+                       chat=chat,
+                       from_user=user,
+                       text=text,
+                       forward_from=forward_from,
+                       forward_from_chat=forward_from_chat,
+                       reply_to_message=reply_to_message,
+                       entities=entities,
+                       audio=audio,
+                       document=document,
+                       photo=photo,
+                       sticker=sticker,
+                       video=video,
+                       voice=voice,
+                       caption=caption,
+                       contact=contact,
+                       location=location,
+                       venue=venue,
+                       new_chat_members=new_chat_members,
+                       left_chat_member=left_chat_member,
+                       new_chat_title=new_chat_title,
+                       new_chat_photo=new_chat_photo,
+                       delete_chat_photo=delete_chat_photo,
+                       group_chat_created=group_chat_created,
+                       supergroup_chat_created=supergroup_chat_created,
+                       migrate_to_chat_id=migrate_to_chat_id,
+                       migrate_from_chat_id=migrate_from_chat_id,
+                       channel_chat_created=channel_chat_created,
+                       pinned_message=pinned_message,
+                       forward_from_message_id=forward_from_message_id,
+                       forward_date=forward_date,
+                       bot=bot or self.bot)
 
     def _handle_attachments(self, audio, contact, document, location, photo,
                             sticker, user, venue, video, voice, caption):
         attachments = [
-            x
-            for x in [
+            x for x in [
                 photo, venue, location, contact, voice, video, sticker,
                 document, audio
             ] if x
@@ -287,7 +285,8 @@ class MessageGenerator(PtbGenerator):
                     pass
                 else:
                     raise BadMessageException(
-                        "photo must either be True or list(telegram.PhotoSize)")
+                        "photo must either be True or list(telegram.PhotoSize)"
+                    )
             elif isinstance(photo, bool):
                 photo = self._get_photosize()
             else:
@@ -399,8 +398,8 @@ class MessageGenerator(PtbGenerator):
             except AttributeError:
                 # Python 3 (< 3.3) and Python 2
                 forward_date = int(time.mktime(now.timetuple()))
-        if (forward_from_message_id and
-                not isinstance(forward_from_message_id, int)) or (
+        if (forward_from_message_id
+                and not isinstance(forward_from_message_id, int)) or (
                     forward_from_chat and not forward_from_message_id):
             forward_from_message_id = next(self.idgen)
         return forward_date, forward_from, forward_from_message_id
@@ -408,10 +407,10 @@ class MessageGenerator(PtbGenerator):
     def _handle_status(self, channel_chat_created, chat, delete_chat_photo,
                        group_chat_created, left_chat_member,
                        migrate_from_chat_id, migrate_to_chat_id,
-                       new_chat_member, new_chat_photo, new_chat_title,
+                       new_chat_members, new_chat_photo, new_chat_title,
                        pinned_message, supergroup_chat_created):
         status_messages = [
-            new_chat_member, left_chat_member, new_chat_title, new_chat_photo,
+            new_chat_members, left_chat_member, new_chat_title, new_chat_photo,
             delete_chat_photo, group_chat_created, supergroup_chat_created,
             channel_chat_created, migrate_to_chat_id, migrate_from_chat_id,
             pinned_message
@@ -419,11 +418,12 @@ class MessageGenerator(PtbGenerator):
         if len([x for x in status_messages if x]) > 1:
             raise BadMessageException(
                 "Limit to only one status message per message")
-        if new_chat_member:
-            if not isinstance(new_chat_member, User):
-                raise BadUserException
+        if new_chat_members:
             if chat.type == "private":
                 raise BadChatException("Can not add members to private chat")
+            for new_chat_member in new_chat_members:
+                if not isinstance(new_chat_member, User):
+                    raise BadUserException
         if left_chat_member:
             if not isinstance(left_chat_member, User):
                 raise BadUserException
@@ -473,23 +473,22 @@ class MessageGenerator(PtbGenerator):
         if chat:
             if not user:
                 if chat.type == "private":
-                    user = self.ug.get_user(
-                        first_name=chat.first_name,
-                        last_name=chat.last_name,
-                        username=chat.username,
-                        id=chat.id)
+                    user = self.ug.get_user(first_name=chat.first_name,
+                                            last_name=chat.last_name,
+                                            username=chat.username,
+                                            id=chat.id)
                 else:
                     user = self.ug.get_user()
         elif user and private:
             chat = self.cg.get_chat(user=user)
         elif user:
-            chat = self.cg.get_chat(type="group")
+            chat = self.cg.get_chat(chat_type="group")
         elif private:
             user = self.ug.get_user()
             chat = self.cg.get_chat(user=user)
         else:
             user = self.ug.get_user()
-            chat = self.cg.get_chat(type="group")
+            chat = self.cg.get_chat(chat_type="group")
         return user, chat
 
     def _handle_text(self, text, parse_mode):
@@ -512,7 +511,12 @@ class MessageGenerator(PtbGenerator):
         for _ in range(2):
             w, h = randint(40, 400), randint(40, 400)
             s = w * h * 0.3
-            tmp.append(PhotoSize(str(uuid.uuid4()), w, h, file_size=s))
+            tmp.append(
+                PhotoSize(str(uuid.uuid4()),
+                          str(uuid.uuid4()),
+                          w,
+                          h,
+                          file_size=s))
         return tmp
 
     def _get_location(self):
@@ -531,7 +535,7 @@ class MessageGenerator(PtbGenerator):
     def _get_voice(self):
         import uuid
         from random import randint
-        return Voice(str(uuid.uuid4()), randint(1, 120))
+        return Voice(str(uuid.uuid4()), str(uuid.uuid4()), randint(1, 120))
 
     def _get_video(self, data=None):
         import uuid
@@ -540,9 +544,8 @@ class MessageGenerator(PtbGenerator):
             data['width'] = randint(40, 400)
             data['height'] = randint(40, 400)
             return Video(**data)
-        return Video(
-            str(uuid.uuid4()),
-            randint(40, 400), randint(40, 400), randint(2, 300))
+        return Video(str(uuid.uuid4()), str(uuid.uuid4()), randint(40, 400),
+                     randint(40, 400), randint(2, 300))
 
     def _get_sticker(self, data=None):
         import uuid
@@ -551,13 +554,19 @@ class MessageGenerator(PtbGenerator):
             data['width'] = randint(20, 200)
             data['height'] = randint(20, 200)
             return Sticker(**data)
-        return Sticker(str(uuid.uuid4()), randint(20, 200), randint(20, 200))
+        return Sticker(str(uuid.uuid4()), str(uuid.uuid4()), randint(20, 200),
+                       randint(20, 200), False, False)
 
     def _get_document(self):
         import uuid
-        return Document(str(uuid.uuid4()), file_name="somedoc.pdf")
+        return Document(str(uuid.uuid4()),
+                        str(uuid.uuid4()),
+                        file_name="somedoc.pdf")
 
     def _get_audio(self):
         import uuid
         from random import randint
-        return Audio(str(uuid.uuid4()), randint(1, 120), title="Some song")
+        return Audio(str(uuid.uuid4()),
+                     str(uuid.uuid4()),
+                     randint(1, 120),
+                     title="Some song")

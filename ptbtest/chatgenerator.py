@@ -41,7 +41,7 @@ class ChatGenerator(PtbGenerator):
 
     def get_chat(self,
                  cid=None,
-                 type="private",
+                 chat_type="private",
                  title=None,
                  username=None,
                  user=None,
@@ -55,7 +55,7 @@ class ChatGenerator(PtbGenerator):
         generated user.
 
         Args:
-            type (str): Type of chat can be private, group, supergroup or channel.
+            chat_type (str): Type of chat can be private, group, supergroup or channel.
             title (Optional[str]): Title  for the group/supergroup/channel/
             username (Optional[str]): Username for the private/supergroup/channel.
             user (Optional[telegram.User]): If given a private chat for the supplied user will be generated.
@@ -65,43 +65,40 @@ class ChatGenerator(PtbGenerator):
             telegram.Chat: A telegram Chat object.
 
         """
-        if cid and type == 'private':
+        if cid and chat_type == 'private':
             if cid < 0:
-                type = "group"
+                chat_type = "group"
         if user:
             if isinstance(user, User):
                 u = user
-                return Chat(
-                    cid or u.id,
-                    type,
-                    username=u.username,
-                    first_name=u.first_name,
-                    last_name=u.last_name)
-        elif type == "private":
+                return Chat(cid or u.id,
+                            chat_type,
+                            username=u.username,
+                            first_name=u.first_name,
+                            last_name=u.last_name)
+        elif chat_type == "private":
             u = UserGenerator().get_user(username=username)
-            return Chat(
-                cid or u.id,
-                type,
-                username=u.username,
-                first_name=u.first_name,
-                last_name=u.last_name)
-        elif type == "group":
+            return Chat(cid or u.id,
+                        chat_type,
+                        username=u.username,
+                        first_name=u.first_name,
+                        last_name=u.last_name)
+        elif chat_type == "group":
             if not title:
                 title = random.choice(self.GROUPNAMES)
             return Chat(
                 cid or self.gen_id(group=True),
-                type,
+                chat_type,
                 title=title,
                 all_members_are_administrators=all_members_are_administrators)
-        elif type == "supergroup" or type == "channel":
+        elif chat_type == "supergroup" or chat_type == "channel":
             if not title:
                 gn = random.choice(self.GROUPNAMES)
             else:
                 gn = title
             if not username:
                 username = "".join(gn.split(" "))
-            return Chat(
-                cid or self.gen_id(group=True),
-                type,
-                title=gn,
-                username=username)
+            return Chat(cid or self.gen_id(group=True),
+                        chat_type,
+                        title=gn,
+                        username=username)
