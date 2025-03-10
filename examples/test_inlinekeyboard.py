@@ -20,7 +20,7 @@ We will skip the start and help callbacks and focus on the callback query.
 """
 class TestInlineKeyboard(unittest.TestCase):
     def setUp(self):
-        # For use within the tests we nee some stuff. Starting with a Mockbot
+        # For use within the tests we need some stuff. Starting with a Mockbot
         self.bot = Mockbot()
         # Some generators for users and chats
         self.cg = ChatGenerator()
