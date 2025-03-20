@@ -26,6 +26,7 @@ import warnings
 
 import time
 
+from ptbmock.mockrequest import MockRequest
 from telegram import (User, ReplyMarkup, TelegramObject)
 from telegram.error import TelegramError
 
@@ -63,6 +64,7 @@ class Mockbot(TelegramObject):
         self._updates = []
         self.bot = None
         self._username = username
+        self.request = MockRequest()
         self._sendmessages = []
         from .messagegenerator import MessageGenerator
         from .chatgenerator import ChatGenerator
@@ -190,7 +192,7 @@ class Mockbot(TelegramObject):
         return decorator
 
     def getMe(self, timeout=None, **kwargs):
-        self.bot = User(0, "Mockbot", last_name="Bot", username=self._username)
+        self.bot = User(0, "Mockbot", last_name="Bot", username=self._username, is_bot=True)
         return self.bot
 
     @message

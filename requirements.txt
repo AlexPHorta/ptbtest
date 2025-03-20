@@ -1,1 +1,2 @@
-python-telegram-bot
+python-telegram-bot==8.0
+-e git://github.com/Y0hy0h/PtbMock.git@backwards-compatibility#egg=ptbmock
