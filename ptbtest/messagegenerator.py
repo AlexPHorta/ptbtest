@@ -100,7 +100,7 @@ class MessageGenerator(PtbGenerator):
                 raise BadChatException(
                     "Can only use chat.type='channel' for get_channel_post")
         else:
-            chat = ChatGenerator().get_chat(chat_type="channel")
+            chat = ChatGenerator().get_chat(type="channel")
 
         return self.get_message(
             chat=chat, user=user, channel=True, **kwargs).message
@@ -437,13 +437,13 @@ class MessageGenerator(PtbGenerator):
         elif user and private:
             chat = self.cg.get_chat(user=user)
         elif user:
-            chat = self.cg.get_chat(chat_type="group")
+            chat = self.cg.get_chat(type="group")
         elif private:
             user = self.ug.get_user()
             chat = self.cg.get_chat(user=user)
         else:
             user = self.ug.get_user()
-            chat = self.cg.get_chat(chat_type="group")
+            chat = self.cg.get_chat(type="group")
         return user, chat
 
     def _handle_text(self, text, parse_mode):

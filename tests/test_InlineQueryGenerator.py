@@ -36,7 +36,7 @@ class TestInlineQueryGenerator:
         assert bot.username == iqg2.bot.username
 
         with pytest.raises(BadBotException):
-            iqg3 = InlineQueryGenerator(bot="bot")
+            InlineQueryGenerator(bot="bot")
 
     def test_with_user(self):
         user = UserGenerator().get_user()
@@ -50,19 +50,15 @@ class TestInlineQueryGenerator:
         u = InlineQueryGenerator().get_inline_query(query="test")
         assert u.inline_query.query == "test"
 
-        with pytest.raises(AttributeError) as exc:
+        with pytest.raises(AttributeError, match="query"):
             InlineQueryGenerator().get_inline_query(query=True)
-
-        assert "query" in str(exc.value)
 
     def test_offset(self):
         u = InlineQueryGenerator().get_inline_query(offset="44")
         assert u.inline_query.offset == "44"
 
-        with pytest.raises(AttributeError) as exc:
+        with pytest.raises(AttributeError, match="offset"):
             InlineQueryGenerator().get_inline_query(offset=True)
-
-        assert "offset" in str(exc.value)
 
     def test_location(self):
         u = InlineQueryGenerator().get_inline_query(location=True)
@@ -72,10 +68,8 @@ class TestInlineQueryGenerator:
         u = InlineQueryGenerator().get_inline_query(location=loc)
         assert u.inline_query.location.longitude == 23.0
 
-        with pytest.raises(AttributeError) as exc:
+        with pytest.raises(AttributeError, match=r"telegram\.Location"):
             InlineQueryGenerator().get_inline_query(location="location")
-
-        assert "telegram.Location" in str(exc.value)
 
 
 class TestChosenInlineResult:
@@ -86,10 +80,8 @@ class TestChosenInlineResult:
         assert isinstance(u.chosen_inline_result.from_user, User)
         assert u.chosen_inline_result.result_id == "testid"
 
-        with pytest.raises(AttributeError) as exc:
+        with pytest.raises(AttributeError, match="chosen_inline_result"):
             InlineQueryGenerator().get_chosen_inline_result()
-
-        assert "chosen_inline_result" in str(exc.value)
 
     def test_with_location(self):
         u = InlineQueryGenerator().get_chosen_inline_result("testid", location=True)
@@ -99,10 +91,8 @@ class TestChosenInlineResult:
         u = InlineQueryGenerator().get_chosen_inline_result("testid", location=loc)
         assert u.chosen_inline_result.location.longitude == 23.0
 
-        with pytest.raises(AttributeError) as exc:
+        with pytest.raises(AttributeError, match=r"telegram\.Location"):
             InlineQueryGenerator().get_chosen_inline_result("test_id", location="loc")
-
-        assert "telegram.Location" in str(exc.value)
 
     def test_inline_message_id(self):
         u = InlineQueryGenerator().get_chosen_inline_result("test")
