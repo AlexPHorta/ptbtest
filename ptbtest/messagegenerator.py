@@ -164,7 +164,8 @@ class MessageGenerator(PtbGenerator):
                     forward_from_message_id=None,
                     parse_mode=None,
                     channel=False,
-                    bot=None):
+                    bot=None,
+                    date=None):
         """
         When called without arguments will return an update object for a message from a private chat with a
         random user. for modifiers see args.
@@ -232,10 +233,12 @@ class MessageGenerator(PtbGenerator):
             audio, contact, document, location, photo, sticker, user, venue,
             video, voice, caption)
 
+        date = date or datetime.datetime.now()
+
         return Message(
             id or next(self.idgen),
             user,
-            None,
+            date,
             chat,
             text=text,
             forward_from=forward_from,
