@@ -1,3 +1,4 @@
+# ruff: noqa: C901, RUF001
 # A library that provides a testing suite fot python-telegram-bot
 # which can be found on https://github.com/python-telegram-bot/python-telegram-bot
 # Copyright (C) 2017
@@ -23,8 +24,10 @@ marked-up messages to plain text and a :obj:`tuple` of
 `Telegram Docs <https://core.telegram.org/bots/api#formatting-options>`_
 """
 import html
+import ipaddress
 import re
 import string
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Union
@@ -63,30 +66,207 @@ ALLOWED_HTML_TAG_NAMES = ("a", "b", "strong", "i", "em", "s", "strike", "del",
                           "u", "ins", "tg-spoiler", "tg-emoji", "span", "pre",
                           "code", "blockquote")
 
+COMMON_TLDS = ("aaa", "aarp", "abb", "abbott", "abbvie", "abc", "able", "abogado",
+                "abudhabi", "ac", "academy", "accenture", "accountant", "accountants",
+                "aco", "actor", "ad", "ads", "adult", "ae", "aeg", "aero", "aetna",
+                "af", "afl", "africa", "ag", "agakhan", "agency", "ai", "aig",
+                "airbus", "airforce", "airtel", "akdn", "al", "alibaba", "alipay",
+                "allfinanz", "allstate", "ally", "alsace", "alstom", "am", "amazon",
+                "americanexpress", "americanfamily", "amex", "amfam", "amica",
+                "amsterdam", "analytics", "android", "anquan", "anz", "ao", "aol",
+                "apartments", "app", "apple", "aq", "aquarelle", "ar", "arab",
+                "aramco", "archi", "army", "arpa", "art", "arte", "as", "asda",
+                "asia", "associates", "at", "athleta", "attorney", "au", "auction",
+                "audi", "audible", "audio", "auspost", "author", "auto", "autos", "aw",
+                "aws", "ax", "axa", "az", "azure", "ba", "baby", "baidu", "banamex",
+                "band", "bank", "bar", "barcelona", "barclaycard", "barclays", "barefoot",
+                "bargains", "baseball", "basketball", "bauhaus", "bayern", "bb", "bbc",
+                "bbt", "bbva", "bcg", "bcn", "bd", "be", "beats", "beauty", "beer",
+                "bentley", "berlin", "best", "bestbuy", "bet", "bf", "bg", "bh", "bharti",
+                "bi", "bible", "bid", "bike", "bing", "bingo", "bio", "biz", "bj",
+                "black", "blackfriday", "blockbuster", "blog", "bloomberg", "blue",
+                "bm", "bms", "bmw", "bn", "bnpparibas", "bo", "boats", "boehringer",
+                "bofa", "bom", "bond", "boo", "book", "booking", "bosch", "bostik",
+                "boston", "bot", "boutique", "box", "br", "bradesco", "bridgestone",
+                "broadway", "broker", "brother", "brussels", "bs", "bt", "build", "builders",
+                "business", "buy", "buzz", "bv", "bw", "by", "bz", "bzh", "ca", "cab",
+                "cafe", "cal", "call", "calvinklein", "cam", "camera", "camp", "canon",
+                "capetown", "capital", "capitalone", "car", "caravan", "cards", "care",
+                "career", "careers", "cars", "casa", "case", "cash", "casino", "cat",
+                "catering", "catholic", "cba", "cbn", "cbre", "cc", "cd", "center", "ceo",
+                "cern", "cf", "cfa", "cfd", "cg", "ch", "chanel", "channel", "charity",
+                "chase", "chat", "cheap", "chintai", "christmas", "chrome", "church", "ci",
+                "cipriani", "circle", "cisco", "citadel", "citi", "citic", "city", "ck",
+                "cl", "claims", "cleaning", "click", "clinic", "clinique", "clothing",
+                "cloud", "club", "clubmed", "cm", "cn", "co", "coach", "codes", "coffee",
+                "college", "cologne", "com", "commbank", "community", "company", "compare",
+                "computer", "comsec", "condos", "construction", "consulting", "contact",
+                "contractors", "cooking", "cool", "coop", "corsica", "country", "coupon",
+                "coupons", "courses", "cpa", "cr", "credit", "creditcard", "creditunion",
+                "cricket", "crown", "crs", "cruise", "cruises", "cu", "cuisinella", "cv",
+                "cw", "cx", "cy", "cymru", "cyou", "cz", "dabur", "dad", "dance", "data",
+                "date", "dating", "datsun", "day", "dclk", "dds", "de", "deal", "dealer",
+                "deals", "degree", "delivery", "dell", "deloitte", "delta", "democrat",
+                "dental", "dentist", "desi", "design", "dev", "dhl", "diamonds", "diet",
+                "digital", "direct", "directory", "discount", "discover", "dish", "diy",
+                "dj", "dk", "dm", "dnp", "do", "docs", "doctor", "dog", "domains", "dot",
+                "download", "drive", "dtv", "dubai", "dunlop", "dupont", "durban", "dvag",
+                "dvr", "dz", "earth", "eat", "ec", "eco", "edeka", "edu", "education", "ee",
+                "eg", "email", "emerck", "energy", "engineer", "engineering", "enterprises",
+                "epson", "equipment", "er", "ericsson", "erni", "es", "esq", "estate", "et",
+                "eu", "eurovision", "eus", "events", "exchange", "expert", "exposed", "express",
+                "extraspace", "fage", "fail", "fairwinds", "faith", "family", "fan", "fans",
+                "farm", "farmers", "fashion", "fast", "fedex", "feedback", "ferrari", "ferrero",
+                "fi", "fidelity", "fido", "film", "final", "finance", "financial", "fire",
+                "firestone", "firmdale", "fish", "fishing", "fit", "fitness", "fj", "fk",
+                "flickr", "flights", "flir", "florist", "flowers", "fly", "fm", "fo", "foo",
+                "food", "football", "ford", "forex", "forsale", "forum", "foundation", "fox",
+                "fr", "free", "fresenius", "frl", "frogans", "frontier", "ftr", "fujitsu", "fun",
+                "fund", "furniture", "futbol", "fyi", "ga", "gal", "gallery", "gallo", "gallup",
+                "game", "games", "gap", "garden", "gay", "gb", "gbiz", "gd", "gdn", "ge", "gea",
+                "gent", "genting", "george", "gf", "gg", "ggee", "gh", "gi", "gift", "gifts",
+                "gives", "giving", "gl", "glass", "gle", "global", "globo", "gm", "gmail", "gmbh",
+                "gmo", "gmx", "gn", "godaddy", "gold", "goldpoint", "golf", "goo", "goodyear",
+                "goog", "google", "gop", "got", "gov", "gp", "gq", "gr", "grainger", "graphics",
+                "gratis", "green", "gripe", "grocery", "group", "gs", "gt", "gu", "gucci", "guge",
+                "guide", "guitars", "guru", "gw", "gy", "hair", "hamburg", "hangout", "haus",
+                "hbo", "hdfc", "hdfcbank", "health", "healthcare", "help", "helsinki", "here",
+                "hermes", "hiphop", "hisamitsu", "hitachi", "hiv", "hk", "hkt", "hm", "hn",
+                "hockey", "holdings", "holiday", "homedepot", "homegoods", "homes", "homesense",
+                "honda", "horse", "hospital", "host", "hosting", "hot", "hotels", "hotmail",
+                "house", "how", "hr", "hsbc", "ht", "hu", "hughes", "hyatt", "hyundai", "ibm",
+                "icbc", "ice", "icu", "id", "ie", "ieee", "ifm", "ikano", "il", "im", "imamat",
+                "imdb", "immo", "immobilien", "in", "inc", "industries", "infiniti", "info",
+                "ing", "ink", "institute", "insurance", "insure", "int", "international", "intuit",
+                "investments", "io", "ipiranga", "iq", "ir", "irish", "is", "ismaili", "ist",
+                "istanbul", "it", "itau", "itv", "jaguar", "java", "jcb", "je", "jeep", "jetzt",
+                "jewelry", "jio", "jll", "jm", "jmp", "jnj", "jo", "jobs", "joburg", "jot", "joy",
+                "jp", "jpmorgan", "jprs", "juegos", "juniper", "kaufen", "kddi", "ke", "kerryhotels",
+                "kerrylogistics", "kerryproperties", "kfh", "kg", "kh", "ki", "kia", "kids", "kim",
+                "kindle", "kitchen", "kiwi", "km", "kn", "koeln", "komatsu", "kosher", "kp", "kpmg",
+                "kpn", "kr", "krd", "kred", "kuokgroup", "kw", "ky", "kyoto", "kz", "la", "lacaixa",
+                "lamborghini", "lamer", "lancaster", "land", "landrover", "lanxess", "lasalle",
+                "lat", "latino", "latrobe", "law", "lawyer", "lb", "lc", "lds", "lease", "leclerc",
+                "lefrak", "legal", "lego", "lexus", "lgbt", "li", "lidl", "life", "lifeinsurance",
+                "lifestyle", "lighting", "like", "lilly", "limited", "limo", "lincoln", "link",
+                "lipsy", "live", "living", "lk", "llc", "llp", "loan", "loans", "locker", "locus",
+                "lol", "london", "lotte", "lotto", "love", "lpl", "lplfinancial", "lr", "ls", "lt",
+                "ltd", "ltda", "lu", "lundbeck", "luxe", "luxury", "lv", "ly", "ma", "madrid",
+                "maif", "maison", "makeup", "man", "management", "mango", "map", "market",
+                "marketing", "markets", "marriott", "marshalls", "mattel", "mba", "mc", "mckinsey",
+                "md", "me", "med", "media", "meet", "melbourne", "meme", "memorial", "men", "menu",
+                "merckmsd", "mg", "mh", "miami", "microsoft", "mil", "mini", "mint", "mit",
+                "mitsubishi", "mk", "ml", "mlb", "mls", "mm", "mma", "mn", "mo", "mobi", "mobile",
+                "moda", "moe", "moi", "mom", "monash", "money", "monster", "mormon", "mortgage",
+                "moscow", "moto", "motorcycles", "mov", "movie", "mp", "mq", "mr", "ms", "msd",
+                "mt", "mtn", "mtr", "mu", "museum", "music", "mv", "mw", "mx", "my", "mz", "na",
+                "nab", "nagoya", "name", "navy", "nba", "nc", "ne", "nec", "net", "netbank",
+                "netflix", "network", "neustar", "new", "news", "next", "nextdirect", "nexus",
+                "nf", "nfl", "ng", "ngo", "nhk", "ni", "nico", "nike", "nikon", "ninja", "nissan",
+                "nissay", "nl", "no", "nokia", "norton", "now", "nowruz", "nowtv", "np", "nr",
+                "nra", "nrw", "ntt", "nu", "nyc", "nz", "obi", "observer", "office", "okinawa",
+                "olayan", "olayangroup", "ollo", "om", "omega", "one", "ong", "onion", "onl",
+                "online", "ooo", "open", "oracle", "orange", "org", "organic", "origins", "osaka",
+                "otsuka", "ott", "ovh", "pa", "page", "panasonic", "paris", "pars", "partners",
+                "parts", "party", "pay", "pccw", "pe", "pet", "pf", "pfizer", "pg", "ph", "pharmacy",
+                "phd", "philips", "phone", "photo", "photography", "photos", "physio", "pics",
+                "pictet", "pictures", "pid", "pin", "ping", "pink", "pioneer", "pizza", "pk", "pl",
+                "place", "play", "playstation", "plumbing", "plus", "pm", "pn", "pnc", "pohl",
+                "poker", "politie", "porn", "post", "pr", "pramerica", "praxi", "press", "prime",
+                "pro", "prod", "productions", "prof", "progressive", "promo", "properties",
+                "property", "protection", "pru", "prudential", "ps", "pt", "pub", "pw", "pwc",
+                "py", "qa", "qpon", "quebec", "quest", "racing", "radio", "re", "read",
+                "realestate", "realtor", "realty", "recipes", "red", "redstone", "redumbrella",
+                "rehab", "reise", "reisen", "reit", "reliance", "ren", "rent", "rentals", "repair",
+                "report", "republican", "rest", "restaurant", "review", "reviews", "rexroth",
+                "rich", "richardli", "ricoh", "ril", "rio", "rip", "ro", "rocks", "rodeo", "rogers",
+                "room", "rs", "rsvp", "ru", "rugby", "ruhr", "run", "rw", "rwe", "ryukyu", "sa",
+                "saarland", "safe", "safety", "sakura", "sale", "salon", "samsclub", "samsung",
+                "sandvik", "sandvikcoromant", "sanofi", "sap", "sarl", "sas", "save", "saxo", "sb",
+                "sbi", "sbs", "sc", "scb", "schaeffler", "schmidt", "scholarships", "school",
+                "schule", "schwarz", "science", "scot", "sd", "se", "search", "seat", "secure",
+                "security", "seek", "select", "sener", "services", "seven", "sew", "sex", "sexy",
+                "sfr", "sg", "sh", "shangrila", "sharp", "shell", "shia", "shiksha", "shoes",
+                "shop", "shopping", "shouji", "show", "si", "silk", "sina", "singles", "site",
+                "sj", "sk", "ski", "skin", "sky", "skype", "sl", "sling", "sm", "smart", "smile",
+                "sn", "sncf", "so", "soccer", "social", "softbank", "software", "sohu", "solar",
+                "solutions", "song", "sony", "soy", "spa", "space", "sport", "spot", "sr", "srl",
+                "ss", "st", "stada", "staples", "star", "statebank", "statefarm", "stc", "stcgroup",
+                "stockholm", "storage", "store", "stream", "studio", "study", "style", "su",
+                "sucks", "supplies", "supply", "support", "surf", "surgery", "suzuki", "sv",
+                "swatch", "swiss", "sx", "sy", "sydney", "systems", "sz", "tab", "taipei", "talk",
+                "taobao", "target", "tatamotors", "tatar", "tattoo", "tax", "taxi", "tc", "tci",
+                "td", "tdk", "team", "tech", "technology", "tel", "temasek", "tennis", "teva",
+                "tf", "tg", "th", "thd", "theater", "theatre", "tiaa", "tickets", "tienda", "tips",
+                "tires", "tirol", "tj", "tjmaxx", "tjx", "tk", "tkmaxx", "tl", "tm", "tmall",
+                "tn", "to", "today", "tokyo", "ton", "tools", "top", "toray", "toshiba", "total",
+                "tours", "town", "toyota", "toys", "tr", "trade", "trading", "training", "travel",
+                "travelers", "travelersinsurance", "trust", "trv", "tt", "tube", "tui", "tunes",
+                "tushu", "tv", "tvs", "tw", "tz", "ua", "ubank", "ubs", "ug", "uk", "unicom", "university",
+                "uno", "uol", "ups", "us", "uy", "uz", "va", "vacations", "vana", "vanguard",
+                "vc", "ve", "vegas", "ventures", "verisign", "vermögensberater", "vermögensberatung",
+                "versicherung", "vet", "vg", "vi", "viajes", "video", "vig", "viking", "villas",
+                "vin", "vip", "virgin", "visa", "vision", "viva", "vivo", "vlaanderen", "vn", "vodka",
+                "volvo", "vote", "voting", "voto", "voyage", "vu", "wales", "walmart", "walter",
+                "wang", "wanggou", "watch", "watches", "weather", "weatherchannel", "webcam",
+                "weber", "website", "wed", "wedding", "weibo", "weir", "wf", "whoswho", "wien",
+                "wiki", "williamhill", "win", "windows", "wine", "winners", "wme", "wolterskluwer",
+                "woodside", "work", "works", "world", "wow", "ws", "wtc", "wtf", "xbox", "xerox",
+                "xihuan", "xin", "ελ", "ευ", "бг", "бел", "дети", "ею", "католик", "ком", "мкд",
+                "мон", "москва", "онлайн", "орг", "рус", "рф", "сайт", "срб", "укр", "қаз", "հայ",
+                "ישראל", "קום", "ابوظبي", "ارامكو", "الاردن", "البحرين", "الجزائر", "السعودية",
+                "العليان", "المغرب", "امارات", "ایران", "بارت", "بازار", "بيتك", "بھارت", "تونس",
+                "سودان", "سورية", "شبكة", "عراق", "عرب", "عمان", "فلسطين", "قطر", "كاثوليك", "كوم",
+                "مصر", "مليسيا", "موريتانيا", "موقع", "همراه", "پاکستان", "ڀارت", "कॉम", "नेट", "भारत",
+                "भारतम्", "भारोत", "संगठन", "বাংলা", "ভারত", "ভাৰত", "ਭਾਰਤ", "ભારત", "ଭାରତ", "இந்தியா",
+                "இலங்கை", "சிங்கப்பூர்", "భారత్", "ಭಾರತ", "ഭാരതം", "ලංකා", "คอม", "ไทย", "ລາວ",
+                "გე", "みんな", "アマゾン", "クラウド", "グーグル", "コム", "ストア", "セール", "ファッション",
+                "ポイント", "世界", "中信", "中国", "中國", "中文网", "亚马逊", "企业", "佛山", "信息",
+                "健康", "八卦", "公司", "公益", "台湾", "台灣", "商城", "商店", "商标", "嘉里", "嘉里大酒店",
+                "在线", "大拿", "天主教", "娱乐", "家電", "广东", "微博", "慈善", "我爱你", "手机", "招聘",
+                "政务", "政府", "新加坡", "新闻", "时尚", "書籍", "机构", "淡马锡", "游戏", "澳門", "点看",
+                "移动", "组织机构", "网址", "网店", "网站", "网络", "联通", "谷歌", "购物", "通販", "集团",
+                "電訊盈科", "飞利浦", "食品", "餐厅", "香格里拉", "香港", "닷넷", "닷컴", "삼성", "한국",
+                "xxx", "xyz", "yachts", "yahoo", "yamaxun", "yandex", "ye", "yodobashi", "yoga",
+                "yokohama", "you", "youtube", "yt", "yun", "za", "zappos", "zara", "zero", "zip",
+                "zm", "zone", "zuerich", "zw")
 
-class _EntityPosition:
+
+class _EntityMatch:
     """
     Args
         start_pos (int): The start position of the entity.
         end_pos (int): The end position of the entity.
         text (str): The text entities are parsed from. It is used for calculating
             utf16 offset.
+        match (re.Match): The raw regex match object.
     """
-    def __init__(self, start_pos:int, end_pos:int, text:str):
-        self.start = start_pos
-        self.end = end_pos
-        self._utf16_offset = _get_utf16_length(text[:start_pos])
-        self._length = _get_utf16_length(text[self.start:self.end])
+    def __init__(self, match: re.Match, text:str):
+        self._match = match
+        self._start = self._match.start()
+        self._end = self._match.end()
+
+        self._utf16_offset = _get_utf16_length(text[:self._start])
+        self._length = _get_utf16_length(text[self._start:self._end])
 
     @property
-    def offset(self):
-        """Return the UTF-16 offset of the entity in the text."""
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    @property
+    def utf16_offset(self):
         return self._utf16_offset
 
     @property
-    def length(self):
-        """Return the UTF-16 length of the entity."""
+    def utf16_length(self):
         return self._length
+
+    def group(self, value: Any):
+        return self._match.group(value)
 
 
 def _get_utf16_length(text: str) -> int:
@@ -440,6 +620,137 @@ def _is_hashtag_letter(letter: str) -> bool:
         return True
     else:
         return False
+
+
+def _fix_url(full_url: str) -> str:
+    has_protocol = False
+    url = full_url
+    protocols_pattern = re.compile(r"^(https?|ftp|tonsite)://", flags=re.IGNORECASE)
+
+    if match := protocols_pattern.match(full_url):
+        has_protocol = True
+        url = url[match.end():]
+
+    domain_end = len(url)
+    # Looking for the leftmost position of
+    # the one of the given chars (these chars divide
+    # the domain and the path).
+    for ch in "/?#":
+        pos = url.find(ch)
+        if pos > -1 and pos < domain_end:
+            domain_end = pos
+    domain, path = url[:domain_end], url[domain_end:]
+
+    if (at_pos := domain.find("@")) > -1:
+        domain = domain[at_pos+1:]
+
+    if (colon_pos := domain.rfind(":")) > -1:
+        domain = domain[:colon_pos]
+
+    if domain.lower() == "teiegram.org":
+        return ""
+
+    parentheses_cnt, square_br_cnt, curly_br_cnt = 0, 0, 0
+
+    path_pos = 0
+    for ch in path:
+        if ch == "(":
+            parentheses_cnt += 1
+        elif ch == ")":
+            parentheses_cnt -= 1
+        elif ch == "[":
+            square_br_cnt += 1
+        elif ch == "]":
+            square_br_cnt -= 1
+        elif ch == "{":
+            curly_br_cnt += 1
+        elif ch == "}":
+            curly_br_cnt -= 1
+
+        if parentheses_cnt < 0 or square_br_cnt < 0 or curly_br_cnt < 0:
+            break
+
+        path_pos += 1
+
+    bad_path_end_chars = ".:;,('?!`"
+
+    while path_pos > 0 and path[path_pos-1] in bad_path_end_chars:
+        path_pos -= 1
+
+    full_url = full_url[:len(full_url) - (len(path) - path_pos)]
+
+    is_ipv4 = True
+    try:
+        ipaddress.ip_address(domain)
+    except ValueError:
+        is_ipv4 = False
+
+    domain_parts = domain.split(".")
+    if len(domain_parts) <= 1:
+        return ""
+
+    def validator(text):
+        return not text or len(text) >= 64 or text.endswith("-")
+
+    if any(map(validator, domain_parts)):
+        return ""
+
+    if is_ipv4:
+        return full_url
+
+    # The "google" part in "google.com".
+    second_level_domain = domain_parts[-2]
+    # Skip the URL if there are no subdomains and domain starts with a underscore.
+    if len(domain_parts) == 2 and second_level_domain.startswith("_"):
+        return ""
+
+    # If the 2nd level domain consists of whitespaces only.
+    if not second_level_domain.strip():
+        return ""
+    # Telegram considers the underscore as an invalid symbol
+    # only in the second level domain, while for all subdomains
+    # it is perfectly OK.
+    elif "_" in second_level_domain:
+        return ""
+
+    # .com, .net, .org, etc.
+    tld = domain_parts[-1].rstrip("…")
+    if len(tld) <= 1:
+        return ""
+
+    def is_common_tld(tld: str) -> bool:
+        if tld.islower():
+            return tld in COMMON_TLDS
+
+        lowered = tld.lower()
+        if lowered != tld and lowered[1:] == tld[1:]:
+            return False
+
+        return lowered in COMMON_TLDS
+
+    if tld.startswith("xn--"):
+        if len(tld) <= 5 or re.search(r"[^0-9a-zA-Z]", tld[4:]):
+            return ""
+    else:
+        if tld.count("_") + tld.count("-") > 0:
+            return ""
+
+        if not has_protocol and not is_common_tld(tld):
+            return ""
+
+    return full_url
+
+
+def _is_email_address(text: str) -> bool:
+    """
+    Check if the given ``text`` is a valid email address.
+    """
+    pattern = re.compile(r"^([a-z0-9_-]{0,26}[.+:]){0,10}"
+                         r"[a-z0-9_-]{1,35}"
+                         r"@(([a-z0-9][a-z0-9_-]{0,28})?[a-z0-9][.]){1,6}"
+                         r"[a-z]{2,8}$", flags=re.IGNORECASE)
+
+    return bool(pattern.search(text))
 
 
 class EntityParser:
@@ -1352,7 +1663,7 @@ class EntityParser:
         return result_text, tuple(sorted_entities)
 
     @staticmethod
-    def _extract_entities(text: str, pattern: Union[str, re.Pattern]) -> tuple[_EntityPosition, ...]:
+    def _extract_entities(text: str, pattern: Union[str, re.Pattern]) -> tuple[_EntityMatch, ...]:
         """
         Parse entities from text with the given regular expression.
 
@@ -1366,7 +1677,7 @@ class EntityParser:
             pattern (str | ~typing.Pattern): A regular expression.
 
         Returns:
-            tuple[_EntityPosition]: A tuple of ``_EntityPosition`` with the offset and
+            tuple[_EntityMatch]: A tuple of ``_EntityPosition`` with the offset and
             the length of the found entities.
             """
         if isinstance(pattern, str):
@@ -1374,7 +1685,7 @@ class EntityParser:
 
         result = list()
         for match in pattern.finditer(text):
-            result.append(_EntityPosition(match.start(), match.end(), text))
+            result.append(_EntityMatch(match, text))
 
         return tuple(result)
 
@@ -1410,15 +1721,15 @@ class EntityParser:
         allowed_3_char_mentions = ("@gif", "@vid", "@pic")
         entities: list[MessageEntity] = list()
         for entity_position in points:
-            if entity_position.length < 4 or entity_position.length > 33:
+            if entity_position.utf16_length < 4 or entity_position.utf16_length > 33:
                 continue
-            elif (entity_position.length == 4 and
+            elif (entity_position.utf16_length == 4 and
                   text[entity_position.start:entity_position.end] not in allowed_3_char_mentions):
                 continue
 
             entities.append(MessageEntity(MessageEntityType.MENTION,
-                                          offset=entity_position.offset,
-                                          length=entity_position.length))
+                                          offset=entity_position.utf16_offset,
+                                          length=entity_position.utf16_length))
 
         return tuple(entities)
 
@@ -1451,8 +1762,8 @@ class EntityParser:
         entities = list()
         for entity_position in EntityParser._extract_entities(text, pattern):
             entities.append(MessageEntity(MessageEntityType.BOT_COMMAND,
-                                          offset=entity_position.offset,
-                                          length=entity_position.length))
+                                          offset=entity_position.utf16_offset,
+                                          length=entity_position.utf16_length))
 
         return tuple(entities)
 
@@ -1568,9 +1879,9 @@ class EntityParser:
 
         for match in matches:
             # If the input string is "$ABC@mention", then
-            # match.group(0) is '$ABC@mention'
-            # match.group(1) is 'ABC'
-            # match.group(2) is 'mention' (optional)
+            # group 0 is '$ABC@mention'
+            # group 1 is 'ABC'
+            # group 2 is 'mention' (optional)
             cashtag = match.group(1)
             mention = match.group(2)
 
@@ -1599,6 +1910,150 @@ class EntityParser:
             entities.append(MessageEntity(MessageEntityType.CASHTAG,
                                           offset=_get_utf16_length(text[:match.start()]),
                                           length=full_length))
+
+        return tuple(entities)
+
+    @staticmethod
+    def parse_urls_and_emails(text: str) -> tuple[MessageEntity, ...]:
+        """
+        Extract :obj:`~telegram.MessageEntity` representing
+        URLs (``https://example.com``) from the given ``text``.
+
+        Examples:
+            An input string: ``https://example.com``
+
+            Result:
+
+            .. code:: python
+
+                (MessageEntity(length=19, offset=0, type=MessageEntityType.URL),)
+
+        Args:
+            text (str): A message that must be parsed.
+
+        Returns:
+            tuple[~telegram.MessageEntity]: Tuple of :obj:`~telegram.MessageEntity` with
+            type :obj:`~telegram.constants.MessageEntityType.URL`.
+            The tuple might be empty if no entities were found.
+        """
+        # Allowed characters in the username and in the password in the basic auth.
+        user_pass_chars = "a-z0-9._―‑!%-"
+
+        host_domain_symbols = "a-z0-9\u00a1-\uffff―_‑-"
+        # This pattern is based on this one https://gist.github.com/dperini/729294
+        pattern = re.compile(
+            # Optional protocol.
+            r"(?:[a-z]+://)?"
+            # 'user:pass' basic auth (optional)
+            fr"(?:[:{user_pass_chars}]+(?::[{user_pass_chars}]+)?@)?"
+            r"(?:"
+                # IP address
+                r"(?:(?:\d{1,3})\.){3}(?:\d{1,3})\b"
+            r"|"
+                # host & domain names
+                r"(?:"
+                    r"(?:"
+                        rf"[{host_domain_symbols}]"
+                        rf"[{host_domain_symbols}]{{0,62}}"
+                    r")?"
+                    rf"[{host_domain_symbols}]\."
+                r")+"
+                # TLD identifier name
+                r"(?:[a-z0-9\u00a1-\uffff`‑―-]{2,})"
+            r")"
+            # port number (optional)
+            r"(?P<port>:[0-9]+)?"
+            # resource path (optional)
+            r"(?P<path>[/?#]\S*)?", flags=re.IGNORECASE)
+
+        def is_url_path_symbol(ch):
+            """
+            Check if the given symbol is a valid symbol for the path.
+            """
+            if ch in "\n<>\"«»":
+                return False
+
+            int_ch = ord(ch)
+            if 0x206f >= int_ch >= 0x2000:  # General Punctuation.
+                # Zero Width Non-Joiner/Joiner and various dashes
+                return int_ch == 0x200c or int_ch == 0x200d or (0x2015 >= int_ch >= 0x2010)
+
+            # The char is not a Separator.
+            return not unicodedata.category(ch).startswith("Z")
+
+        entities = list()
+        matches = EntityParser._extract_entities(text, pattern)
+        for match in matches:
+            entity_length = match.utf16_length
+            url = text[match.start:match.end]
+            protocol = urlparse(url).scheme if "://" in url else None
+            prev_ch: str = get_item(text, match.start - 1, "", allow_negative_indexing=False)
+
+            # Skip if there is a dot or a latin letter right before the url or ...
+            if (prev_ch and prev_ch in string.ascii_letters + "." or
+                    # ... there is '@' symbol without user:pass or ...
+                    "://@" in url or
+                    # ... there is no protocol, but '://' at the beginning or the URL startswith '@'.
+                    url.startswith("@") or url.startswith("://")):
+                continue
+            # if there is a dot(s) followed by a non-whitespace symbol right after the
+            # TLD, then ignore such an URL.
+            elif re.search(r"^\.+[^.\s]", text[match.end:]):
+                continue
+            elif protocol and protocol.lower() not in ("http", "https", "ftp", "tonsite"):
+                continue
+
+            path = match.group("path")
+
+            # Checking for invalid symbols in the path.
+            valid_symbols_in_path_counter = 1  # Skip the leading slash in the path.
+            while (path and
+                   valid_symbols_in_path_counter < len(path) and
+                   is_url_path_symbol(path[valid_symbols_in_path_counter])):
+                valid_symbols_in_path_counter+=1
+
+            if path and valid_symbols_in_path_counter != len(path):
+                invalid_symbols_counter = len(path) - valid_symbols_in_path_counter
+                url = url[:len(url) - invalid_symbols_counter]
+                entity_length -= _get_utf16_length(path[valid_symbols_in_path_counter:])
+                path = path[:valid_symbols_in_path_counter]
+
+            fixed_url = _fix_url(url)
+            if not fixed_url:
+                continue
+            elif (url_length_diff := len(url) - len(fixed_url)) > 0:
+                entity_length -= _get_utf16_length(url[-url_length_diff:])
+
+            # The 'raw_port' will contain the colon symbol.
+            # E.g., ':8080'.
+            if raw_port := match.group("port"):
+                # If the port is bigger than 65535, than ignore everything
+                # in the url after the tld.
+                port = int(raw_port[1:])
+                if port == 0 or port > 65535:
+                    entity_length -= len(raw_port + (path or ""))
+
+            # Ignore trailing '#' symbol if there are no preceding '#', '?' or '/' symbols.
+            if re.search(r"(?<![#?/])#$", fixed_url):
+                entity_length -= 1
+
+            if not path and fixed_url.endswith("…"):
+                entity_length -= 1
+
+            entity_type = MessageEntityType.URL
+            offset = match.utf16_offset
+            entity_text = text[match.start:match.start + entity_length]
+
+            if _is_email_address(entity_text):
+                entity_type = MessageEntityType.EMAIL
+                if entity_text.startswith(":"):
+                    offset += 1
+                    entity_length -= 1
+                elif entity_text.startswith("mailto:"):
+                    offset += 7
+                    entity_length -= 7
+
+            entities.append(MessageEntity(entity_type, offset=offset, length=entity_length))
 
         return tuple(entities)
 

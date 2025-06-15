@@ -11,7 +11,9 @@ from ptbtest.entityparser import (_get_utf16_length,
                                   _get_id_from_telegram_url,
                                   EntityParser,
                                   get_hash,
-                                  _is_hashtag_letter)
+                                  _is_hashtag_letter,
+                                  _fix_url,
+                                  _is_email_address)
 
 
 def test_get_utf16_length():
@@ -238,6 +240,197 @@ def test_is_hashtag_letter():
     assert not _is_hashtag_letter("\t")
 
 
+class TestFixUrl:
+    def test_valid_urls_with_protocol(self):
+        assert _fix_url("http://example.com") == "http://example.com"
+        assert _fix_url("https://example.org/path") == "https://example.org/path"
+        assert _fix_url("ftp://sub.domain.co.uk?query=1") == "ftp://sub.domain.co.uk?query=1"
+        assert _fix_url("tonsite://example.ton") == "tonsite://example.ton"
+        assert _fix_url("https://example.com:8080") == "https://example.com:8080"
+
+    def test_valid_urls_without_protocol(self):
+        assert _fix_url("example.com") == "example.com"
+        assert _fix_url("domain.org/path/page.html") == "domain.org/path/page.html"
+        assert _fix_url("sub_.example.com") == "sub_.example.com"
+
+    def test_domain_path_dividers(self):
+        assert _fix_url("http://example.com/path") == "http://example.com/path"
+        assert _fix_url("http://example.com#path") == "http://example.com#path"
+        assert _fix_url("http://example.com?path") == "http://example.com?path"
+
+    def test_url_with_basic_auth(self):
+        assert _fix_url("https://user:pass@example.com") == "https://user:pass@example.com"
+
+    def test_url_with_port(self):
+        url = "https://example.com:8080"
+        assert _fix_url(url) == url
+
+    def test_fake_domain_teiegram_org(self):
+        assert _fix_url("teiegram.org") == ""
+        assert _fix_url("https://teiegram.org") == ""
+        assert _fix_url("http://teiegram.org") == ""
+        assert _fix_url("ftp://teiegram.org") == ""
+        assert _fix_url("tonsite://teiegram.org") == ""
+
+    def test_valid_brackets_balance(self):
+        assert _fix_url("http://site.com/path(sub[1]{2})") == "http://site.com/path(sub[1]{2})"
+
+    def test_invalid_brackets_balance(self):
+        assert _fix_url("http://broken.com/test)") == "http://broken.com/test"
+
+    def test_striping_invalid_symbols_at_the_end(self):
+        assert _fix_url("https://example.com/path);") == "https://example.com/path"
+        assert _fix_url("http://example.com/test!") == "http://example.com/test"
+        assert _fix_url("http://example.com/test.:;,('?!`") == "http://example.com/test"
+
+    def test_valid_ipv4(self):
+        assert _fix_url("http://192.168.1.1") == "http://192.168.1.1"
+        assert _fix_url("http://192.168.1.1/path") == "http://192.168.1.1/path"
+        assert _fix_url("http://192.168.1.1/?param=value") == "http://192.168.1.1/?param=value"
+        assert _fix_url("192.168.1.1/?param=value") == "192.168.1.1/?param=value"
+
+    def test_invalid_ip_addresses(self):
+        assert _fix_url("http://127.00.0.1") == ""
+        assert _fix_url("http://256.100.0.1") == ""
+
+    def test_invalid_urls(self):
+        assert _fix_url("localhost") == ""
+        assert _fix_url("custom.domainzzz") == ""
+        assert _fix_url("bad_domain.com") == ""
+        assert _fix_url("https://bad-.com") == ""
+        assert _fix_url("https://example.c_m") == ""
+
+    def test_valid_punycode(self):
+        assert _fix_url("https://xn--e1afmkfd.xn--80asehdb/") == "https://xn--e1afmkfd.xn--80asehdb/"
+        assert _fix_url("xn--80afpi2a3c.xn--p1ai") == "xn--80afpi2a3c.xn--p1ai"
+
+    def test_invalid_punycode(self):
+        assert _fix_url("https://xn--a.xn--8/") == ""
+
+    def test_is_common_tld(self):
+        """This is a test for the inner function."""
+        assert _fix_url("example.Com") == ""
+        assert _fix_url("тест.Онлайн") == ""
+
+    def test_url_with_all_parts(self):
+        url = "https://user:pass@example.com:8080/path?param1=val&param2=val2#anchor"
+        assert _fix_url(url) == url
+
+
+def test_is_email_address():
+    # FAILING
+    assert not _is_email_address("")
+    assert not _is_email_address("telegram.org")
+    assert not _is_email_address("security.telegram.org")
+    assert not _is_email_address("@")
+    assert not _is_email_address("test.abd")
+    assert not _is_email_address("a.ab")
+
+    # SUCCESS
+    assert _is_email_address("security@telegram.org")
+    assert _is_email_address("A@a.a.a.ab")
+    assert _is_email_address("A@a.ab")
+    assert _is_email_address("Test@aa.aa.aa.aa")
+    assert _is_email_address("Test@test.abd")
+    assert _is_email_address("a@a.a.a.ab")
+    assert _is_email_address("test@test.abd")
+    assert _is_email_address("test@test.com")
+    assert _is_email_address("a.bc@d.ef")
+
+    bad_userdata = ("",
+                    "a.a.a.a.a.a.a.a.a.a.a.a",
+                    "+.+.+.+.+.+",
+                    "*.a.a",
+                    "a.*.a",
+                    "a.a.*",
+                    "a.a.",
+                    "a.abcdefghijklmnopqrstuvwxyz0.a",
+                    "a.a.abcdefghijklmnopqrstuvwxyz0123456789",
+                    "abcdefghijklmnopqrstuvwxyz0.a.a")
+
+    good_userdata = ("a.a.a.a.a.a.a.a.a.a.a",
+                     "a+a+a+a+a+a+a+a+a+a+a",
+                     "+.+.+.+.+._",
+                     "aozAQZ0-5-9_+-aozAQZ0-5-9_.aozAQZ0-5-9_.-._.+-",
+                     "a.a.a",
+                     "a.a.abcdefghijklmnopqrstuvwxyz012345678",
+                     "a.abcdefghijklmnopqrstuvwxyz.a",
+                     "a..a",
+                     "abcdefghijklmnopqrstuvwxyz.a.a",
+                     ".a.a")
+
+    bad_domains = ("",
+                   ".",
+                   "abc",
+                   "localhost",
+                   "a.a.a.a.a.a.a.ab",
+                   ".......",
+                   "a.a.a.a.a.a+ab",
+                   "a+a.a.a.a.a.ab",
+                   "a.a.a.a.a.a.a",
+                   "a.a.a.a.a.a.abcdefghi",
+                   "a.a.a.a.a.a.ab0yz",
+                   "a.a.a.a.a.a.ab9yz",
+                   "a.a.a.a.a.a.ab-yz",
+                   "a.a.a.a.a.a.ab_yz",
+                   "a.a.a.a.a.a.ab*yz",
+                   ".ab",".a.ab",
+                   "a..ab",
+                   "a.a.a..a.ab",
+                   ".a.a.a.a.ab",
+                   "abcdefghijklmnopqrstuvwxyz01234.ab",
+                   "ab0cd.abd.aA*sd.0.9.0-9.ABOYZ",
+                   "ab*cd.abd.aAasd.0.9.0-9.ABOYZ",
+                   "ab0cd.abd.aAasd.0.9.0*9.ABOYZ",
+                   "*b0cd.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0c*.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.0-*.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.*-9.ABOYZ",
+                   "-b0cd.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0c-.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.-.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.--9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.0--.ABOYZ",
+                   "_b0cd.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0c_.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd._.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9._-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.0-_.ABOYZ",
+                   "-.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.-.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9.-.ABOYZ",
+                   "_.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d._.0.9.0-9.ABOYZ",
+                   "ab0cd.ab_d.aA-sd.0.9._.ABOYZ")
+
+    good_domains = ("a.a.a.a.a.a.ab",
+                    "a.a.a.a.a.a.abcdef",
+                    "a.a.a.a.a.a.aboyz",
+                    "a.a.a.a.a.a.ABOYZ",
+                    "a.a.a.a.a.a.AbOyZ",
+                    "abcdefghijklmnopqrstuvwxyz0123.ab",
+                    "ab0cd.ab_d.aA-sd.0.9.0-9.ABOYZ",
+                    "A.Z.aA-sd.a.z.0-9.ABOYZ")
+
+    for b_userdata in bad_userdata:
+        for b_domain in bad_domains:
+            assert not _is_email_address(f"{b_userdata}@{b_domain}"), f"{b_userdata}@{b_domain}"
+            assert not _is_email_address(f"{b_userdata}{b_domain}"), f"{b_userdata}{b_domain}"
+
+        for g_domain in good_domains:
+            assert not _is_email_address(f"{b_userdata}@{g_domain}"), f"{b_userdata}@{g_domain}"
+            assert not _is_email_address(f"{b_userdata}{g_domain}"), f"{b_userdata}{g_domain}"
+
+    for g_userdata in good_userdata:
+        for b_domain in bad_domains:
+            assert not _is_email_address(f"{g_userdata}@{b_domain}"), f"{g_userdata}@{b_domain}"
+            assert not _is_email_address(f"{g_userdata}{b_domain}"), f"{g_userdata}{b_domain}"
+
+        for g_domain in good_domains:
+            assert _is_email_address(f"{g_userdata}@{g_domain}"), f"{g_userdata}@{g_domain}"
+            assert not _is_email_address(f"{g_userdata}{g_domain}"), f"{g_userdata}{g_domain}"
+
+
 class TestEntityParserExtractEntities:
     ep = EntityParser()
 
@@ -247,8 +440,8 @@ class TestEntityParserExtractEntities:
 
         assert result[0].start == 0
         assert result[0].end == 8
-        assert result[0].length == 8
-        assert result[0].offset == 0
+        assert result[0].utf16_length == 8
+        assert result[0].utf16_offset == 0
 
     def test_compiled_pattern(self):
         pattern = re.compile(r"(?<=\B)@([a-zA-Z0-9_]{2,32})(?=\b)")
@@ -256,8 +449,8 @@ class TestEntityParserExtractEntities:
 
         assert result[0].start == 0
         assert result[0].end == 8
-        assert result[0].length == 8
-        assert result[0].offset == 0
+        assert result[0].utf16_length == 8
+        assert result[0].utf16_offset == 0
 
     def test_empty_string(self):
         pattern = re.compile(r"(?<=\B)@([a-zA-Z0-9_]{2,32})(?=\b)")

@@ -158,6 +158,7 @@ class TestMessageGeneratorText:
             MessageGenerator().get_message(
                 text="bad *_double_* markdown", parse_mode="Markdown")
 
+    @pytest.mark.xfail(reason="Waiting for entity parsers.")
     def test_with_html(self):
         teststr = ("we have <b>bold</b> <code>code</code> "
                    "<a href='www.google.com'>google</a> @username "

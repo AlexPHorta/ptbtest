@@ -95,7 +95,7 @@ class TestParseHashtags:
         assert self.ep.parse_hashtags("##") == ()
         assert self.ep.parse_hashtags("##############") == ()
 
-    def test_hash_tag_with_hash_sign_at_the_end(self):
+    def test_hash_sign_at_the_end(self):
         assert self.ep.parse_hashtags("hashtag#") == ()
         assert self.ep.parse_hashtags("hashtag #   ") == ()
 
